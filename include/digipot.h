@@ -8,9 +8,6 @@
 #ifndef DIGIPOT_H_
 #define DIGIPOT_H_
 
-#include "definition_linker.h"
-// Default definitions for number of digipots
-
 #ifdef USE_MCP41HV_DIGIPOT
 #include "spi.h"
 #endif
@@ -30,9 +27,13 @@ typedef enum
 #ifdef USE_MCP41HV_DIGIPOT
 typedef struct
 {
+#if defined(FRAMEWORK_STM32CUBE)
 	GPIO_TypeDef* port;				// GPIO port for chip select pin
-	uint16_t pin;							// GPIO pin number for chip select pin
 	SPI_HandleTypeDef* hspi;	// handle for the SPI instance the digipot is connected to
+#elif defined(FRAMEWORK_ARDUINO)
+	SPIClass hspi;
+#endif
+	uint16_t pin;							// GPIO pin number for chip select pin
 	DigipotStatus status;
 } Mcp41hvDigipot;
 #endif
@@ -47,11 +48,10 @@ typedef struct
 
 
 #ifdef USE_MCP41HV_DIGIPOT
-DigipotStatus mcp41hv_init(uint16_t index, GPIO_TypeDef* port, uint16_t pin, SPI_HandleTypeDef* hspi);
-void mcp41hv_write(uint16_t index, uint8_t data);
-uint8_t mcp41hv_read(uint16_t index);
-void mcp41hv_increment(uint16_t index);
-void mcp41hv_decrement(uint16_t index);
+void mcp41hv_write(Mcp41hvDigipot* digipot, uint8_t data);
+uint8_t mcp41hv_read(Mcp41hvDigipot* digipot);
+void mcp41hv_increment(Mcp41hvDigipot* digipot);
+void mcp41hv_decrement(Mcp41hvDigipot* digipot);
 #endif
 
 #ifdef USE_MCP45HV_DIGIPOT

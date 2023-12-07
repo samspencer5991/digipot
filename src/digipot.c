@@ -25,16 +25,15 @@
 
 #include "digipot.h"
 
-#define TEST_VALUE	127
+#define TEST_VALUE	83
 
 /*********** MCP41HV *********/
 #ifdef USE_MCP41HV_DIGIPOT
-#define MCP41HV_CMD_WRITE 		0x00	// 8-bit command to write to MCPHV41 Write address
+#define MCP41HV_CMD_WRITE 			0x00	// 8-bit command to write to MCPHV41 Write address
 #define MCP41HV_CMD_READ 			0x0f	// 8-bit command to write to MCPHV41 Read address
-#define MCP41HV_CMD_INCREMENT 0x04	// 8-bit command to write to MCPHV41 Increment address
-#define MCP41HV_CMD_DECREMENT 0x08	// 8-bit command to write to MCPHV41 Decrement address
-#define CS_ASSERT 	GPIO_PIN_RESET
-#define CS_RELEASE 	GPIO_PIN_SET
+#define MCP41HV_CMD_INCREMENT 	0x04	// 8-bit command to write to MCPHV41 Increment address
+#define MCP41HV_CMD_DECREMENT 	0x08	// 8-bit command to write to MCPHV41 Decrement address
+void digipot_SetPinState(Mcp41hvDigipot* digipot, uint8_t state);
 #endif
 
 
@@ -50,10 +49,8 @@
 #define MCP41HV_CMD_DECREMENT 0b10				// 2-bit command to write to MCPHV45 Decrement address
 #endif
 
-#ifdef USE_MCP41HV_DIGIPOT
-Mcp41hvDigipot mcp41hvDigipots[NUM_MCP41HV];
-uint16_t currentMcp41hvDigipot;
-#endif
+
+
 
 /*********** MCP45HV *********/
 
@@ -64,41 +61,26 @@ uint16_t currentMcp41hvDigipot;
   * @retval	none
   */
 #ifdef USE_MCP41HV_DIGIPOT
-DigipotStatus mcp41hv_init(uint16_t index, GPIO_TypeDef* port, uint16_t pin, SPI_HandleTypeDef* hspi)
-{
-	mcp41hvDigipots[index].port = port;
-	mcp41hvDigipots[index].pin = pin;
-	mcp41hvDigipots[index].hspi = hspi;
-	uint8_t data = TEST_VALUE;
-	mcp41hvDigipots[index].status = DigipotOk;
-	mcp41hv_write(index, data);
-	if(mcp41hv_read(index) != TEST_VALUE)
-	{
-		mcp41hvDigipots[index].status = DigipotHardwareError;
-	}
-	return mcp41hvDigipots[index].status;
-}
-
 /**
   * @brief 	Writes to the volatile wiper address of MCP41HV digipots
   * @param 	data data to be written
   * @retval data read from SDO pin
   */
-void mcp41hv_write(uint16_t index, uint8_t data)
+void mcp41hv_write(Mcp41hvDigipot* digipot, uint8_t data)
 {
 	// prepare data buffer
 	uint8_t txData[2] = {MCP41HV_CMD_WRITE, data};
-
-	currentMcp41hvDigipot = index;
-	// assert chip select pin to low
-	HAL_GPIO_WritePin(mcp41hvDigipots[index].port, mcp41hvDigipots[index].pin, CS_ASSERT);
-
-	// transmit data
-	while(HAL_SPI_GetState(mcp41hvDigipots[index].hspi) != HAL_SPI_STATE_READY);
-	if(HAL_SPI_Transmit_IT(mcp41hvDigipots[index].hspi, txData, 2) != HAL_OK)
+#if defined(FRAMEWORK_STM32CUBE)
+	// transmit decrement
+	if(HAL_SPI_Transmit_IT(digipot->hspi, &txData, 2)  != HAL_OK)
 	{
-		mcp41hvDigipots[index].status = DigipotHalError;
+		digipot->status = DigipotHalError;
 	}
+#elif defined(FRAMEWORK_ARDUINO)
+	digipot->hspi.beginTransaction(SPISettings(1330000, MSBFIRST, SPI_MODE0));
+	digipot->hspi.transfer(&txData, 2);
+	digipot->hspi.endTransaction();
+#endif
 }
 
 /**
@@ -107,25 +89,27 @@ void mcp41hv_write(uint16_t index, uint8_t data)
   * @retval data read from SDO pin
   */
 
-uint8_t mcp41hv_read(uint16_t index)
+uint8_t mcp41hv_read(Mcp41hvDigipot* digipot)
 {
-	// assert chip select pin to low
-	HAL_GPIO_WritePin(mcp41hvDigipots[index].port, mcp41hvDigipots[index].pin, CS_ASSERT);
-
 	// dummy data in txData to
 	uint8_t txData[2] = {MCP41HV_CMD_READ, 0x00};
 	uint8_t rxData[2];
 	// transmit data
-	if(HAL_SPI_TransmitReceive(mcp41hvDigipots[index].hspi, txData, rxData, 2, 10) != HAL_OK)
+#if defined(FRAMEWORK_STM32CUBE)
+	if(HAL_SPI_TransmitReceive(digipot->hspi, txData, rxData, 2, 10) != HAL_OK)
 	{
-		mcp41hvDigipots[index].status = DigipotHalError;
+		digipot->status = DigipotHalError;
 	}
-	// release chip select pin to high
-	HAL_GPIO_WritePin(mcp41hvDigipots[index].port, mcp41hvDigipots[index].pin, CS_RELEASE);
+#elif defined(FRAMEWORK_ARDUINO)
+	digipot->hspi.beginTransaction(SPISettings(1330000, MSBFIRST, SPI_MODE0));
+	rxData[0] = digipot->hspi.transfer(&txData[0]);
+	rxData[1] = digipot->hspi.transfer(&txData[1]);
+	digipot->hspi.endTransaction();
+#endif
 	// check data to ensure valid command
 	if(rxData[0] != 0xff)
 	{
-		mcp41hvDigipots[index].status = DigipotCmdError;
+		digipot->status = DigipotCmdError;
 	}
 	return rxData[1];
 }
@@ -135,18 +119,20 @@ uint8_t mcp41hv_read(uint16_t index)
   * @param	*digipot Pointer to the digipot type to use
   * @retval none
   */
-void mcp41hv_increment(uint16_t index)
+void mcp41hv_increment(Mcp41hvDigipot* digipot)
 {
 	uint8_t cmd = MCP41HV_CMD_INCREMENT;
-	// assert chip select pin LOW
-	HAL_GPIO_WritePin(mcp41hvDigipots[index].port, mcp41hvDigipots[index].pin, CS_ASSERT);
-	// transmit increment
-	if(HAL_SPI_Transmit_IT(mcp41hvDigipots[index].hspi, &cmd, 1)  != HAL_OK)
+#if defined(FRAMEWORK_STM32CUBE)
+	// transmit decrement
+	if(HAL_SPI_Transmit_IT(digipot->hspi, &cmd, 1)  != HAL_OK)
 	{
-		mcp41hvDigipots[index].status = DigipotHalError;
+		digipot->status = DigipotHalError;
 	}
-	// release chip select pin HIGH
-	HAL_GPIO_WritePin(mcp41hvDigipots[index].port, mcp41hvDigipots[index].pin, CS_RELEASE);
+#elif defined(FRAMEWORK_ARDUINO)
+	digipot->hspi.beginTransaction(SPISettings(1330000, MSBFIRST, SPI_MODE0));
+	digipot->hspi.transfer(&cmd, 1);
+	digipot->hspi.endTransaction();
+#endif
 }
 
 /**
@@ -154,18 +140,20 @@ void mcp41hv_increment(uint16_t index)
   * @param 	*digipot Pointer to the digipot type to use
   * @retval	none
   */
-void mcp41hv_decrement(uint16_t index)
+void mcp41hv_decrement(Mcp41hvDigipot* digipot)
 {
 	uint8_t cmd = MCP41HV_CMD_DECREMENT;
-	// assert chip select pin LOW
-	HAL_GPIO_WritePin(mcp41hvDigipots[index].port, mcp41hvDigipots[index].pin, CS_ASSERT);
+#if defined(FRAMEWORK_STM32CUBE)
 	// transmit decrement
-	if(HAL_SPI_Transmit_IT(mcp41hvDigipots[index].hspi, &cmd, 1)  != HAL_OK)
+	if(HAL_SPI_Transmit_IT(digipot->hspi, &cmd, 1)  != HAL_OK)
 	{
-		mcp41hvDigipots[index].status = DigipotHalError;
+		digipot->status = DigipotHalError;
 	}
-	// release chip select pin HIGH
-	HAL_GPIO_WritePin(mcp41hvDigipots[index].port, mcp41hvDigipots[index].pin, CS_RELEASE);
+#elif defined(FRAMEWORK_ARDUINO)
+	digipot->hspi.beginTransaction(SPISettings(1330000, MSBFIRST, SPI_MODE0));
+	digipot->hspi.transfer(&cmd, 1);
+	digipot->hspi.endTransaction();
+#endif
 }
 #endif
 
@@ -229,7 +217,14 @@ void digipot_rxHandler()
 
 void digipot_txHandler()
 {
-#ifdef USE_MCP41HV_DIGIPOT
-	HAL_GPIO_WritePin(mcp41hvDigipots[currentMcp41hvDigipot].port, mcp41hvDigipots[currentMcp41hvDigipot].pin, CS_RELEASE);
+
+}
+
+void digipot_SetPinState(Mcp41hvDigipot* digipot, uint8_t state)
+{
+#if MCU_CORE_RP2040
+	gpio_put(digipot->pin, (bool)state);
+#elif MCU_CORE_STM32
+	HAL_GPIO_WritePin(digipot->port, digipot->pin, state); 
 #endif
 }
