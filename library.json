@@ -1,11 +1,11 @@
 {
-    "name": "Buttons",
-    "version": "0.9.1",
-    "keywords": "switch, button, gpio, toggle, tactile",
-    "description": "Button and switch event handling for embedded systems",
+    "name": "Digipot",
+    "version": "0.1.0",
+    "keywords": "digital potentiometer, pot, rheostat",
+    "description": "Digipot handling for embedded systems",
     "repository": {
         "type": "git",
-        "url": "https://github.com/samspencer5991/buttons.git"
+        "url": "https://github.com/samspencer5991/digipot.git"
     },
     "frameworks": "arduino, stm32cube",
     "platforms": "ststm32, raspberrypi",
