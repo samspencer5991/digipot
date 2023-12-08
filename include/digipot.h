@@ -9,7 +9,9 @@
 #define DIGIPOT_H_
 
 #ifdef USE_MCP41HV_DIGIPOT
-#include "spi.h"
+#include "SPI.h"
+#include <api/HardwareSPI.h>
+#include <Arduino.h>
 #endif
 
 #ifdef USE_MCP45HV_DIGIPOT
@@ -31,7 +33,7 @@ typedef struct
 	GPIO_TypeDef* port;				// GPIO port for chip select pin
 	SPI_HandleTypeDef* hspi;	// handle for the SPI instance the digipot is connected to
 #elif defined(FRAMEWORK_ARDUINO)
-	SPIClass hspi;
+	SPIClass *hspi;
 #endif
 	uint16_t pin;							// GPIO pin number for chip select pin
 	DigipotStatus status;
