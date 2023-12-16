@@ -31,10 +31,10 @@ void mcp45hv_Write(Mcp45hvDigipot* mcp45hv, uint8_t data)
 	uint8_t memoryAddress = (MCP45HV_WIPER_ADDRESS << 4) | (MCP41HV_CMD_WRITE << 2);
 	uint8_t dataBuf[2] = {memoryAddress, data};
 
-	mcp45hv->hi2c->beginTransmission(mcp45hv->address);
-	mcp45hv->hi2c->write(dataBuf[0]);
-	mcp45hv->hi2c->write(dataBuf[1]);
-	mcp45hv->hi2c->endTransmission();
+	Wire.beginTransmission(mcp45hv->address);
+	Wire.write(dataBuf[0]);
+	Wire.write(dataBuf[1]);
+	Wire.endTransmission();
 	//HAL_I2C_Master_Transmit(mcp45hv->hi2c, deviceAddress, dataBuf, 2, HAL_MAX_DELAY);
 	
 }
