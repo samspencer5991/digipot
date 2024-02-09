@@ -1,6 +1,6 @@
 {
     "name": "Digipot",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "keywords": "digital potentiometer, pot, rheostat",
     "description": "Digipot handling for embedded systems",
     "repository": {
