@@ -50,6 +50,8 @@ uint8_t mcp45hv_Read(Mcp45hvDigipot* mcp45hv)
 	mcp45hv->hi2c->endTransmission(false);
 
 	mcp45hv->hi2c->requestFrom(mcp45hv->address, 2);
+	mcp45hv->hi2c->requestFrom(mcp45hv->address, (size_t)2);
+>>>>>>> Stashed changes
 	if(mcp45hv->hi2c->available())
 	{ 
 		rxBuf[0] = mcp45hv->hi2c->read();   // First byte is 0x00
