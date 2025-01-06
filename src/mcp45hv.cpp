@@ -31,10 +31,10 @@ void mcp45hv_Write(Mcp45hvDigipot* mcp45hv, uint8_t data)
 	uint8_t memoryAddress = (MCP45HV_WIPER_ADDRESS << 4) | (MCP41HV_CMD_WRITE << 2);
 	uint8_t dataBuf[2] = {memoryAddress, data};
 
-	Wire.beginTransmission(mcp45hv->address);
-	Wire.write(dataBuf[0]);
-	Wire.write(dataBuf[1]);
-	Wire.endTransmission();
+	mcp45hv->hi2c->beginTransmission(mcp45hv->address);
+	mcp45hv->hi2c->write(dataBuf[0]);
+	mcp45hv->hi2c->write(dataBuf[1]);
+	mcp45hv->hi2c->endTransmission();
 	//HAL_I2C_Master_Transmit(mcp45hv->hi2c, deviceAddress, dataBuf, 2, HAL_MAX_DELAY);
 	
 }
@@ -49,11 +49,7 @@ uint8_t mcp45hv_Read(Mcp45hvDigipot* mcp45hv)
 	mcp45hv->hi2c->write(memoryAddress);
 	mcp45hv->hi2c->endTransmission(false);
 
-<<<<<<< Updated upstream
 	mcp45hv->hi2c->requestFrom(mcp45hv->address, 2);
-=======
-	mcp45hv->hi2c->requestFrom(mcp45hv->address, (size_t)2);
->>>>>>> Stashed changes
 	if(mcp45hv->hi2c->available())
 	{ 
 		rxBuf[0] = mcp45hv->hi2c->read();   // First byte is 0x00
